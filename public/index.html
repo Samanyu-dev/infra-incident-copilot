@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Infra Incident Copilot</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 0 16px;
+    background: #0b0d12;
+    color: #e6e6e6;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #8b93a1; font-size: 13px; margin-top: 0; margin-bottom: 20px; }
+  #log {
+    border: 1px solid #2a2f3a;
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 320px;
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+  .msg { margin-bottom: 14px; white-space: pre-wrap; line-height: 1.4; }
+  .me { color: #7dd3fc; }
+  .bot { color: #d1d5db; }
+  .steps { font-size: 12px; color: #8b93a1; margin: -8px 0 14px 0; }
+  form { display: flex; gap: 8px; }
+  input {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #2a2f3a;
+    background: #12151c;
+    color: #eee;
+    font-size: 14px;
+  }
+  button {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+  <h1>Infra Incident Copilot</h1>
+  <p class="sub">Describe a symptom. It checks recent deploys, metric spikes, and past incidents, then triages with an LLM.</p>
+  <div id="log"></div>
+  <form id="f">
+    <input id="input" placeholder="e.g. checkout API is timing out" autocomplete="off" />
+    <button type="submit">Send</button>
+  </form>
+
+  <script>
+    const sessionId = localStorage.getItem("session") || crypto.randomUUID();
+    localStorage.setItem("session", sessionId);
+
+    const log = document.getElementById("log");
+    const form = document.getElementById("f");
+    const input = document.getElementById("input");
+    const button = form.querySelector("button");
+
+    function addMsg(text, cls) {
+      const div = document.createElement("div");
+      div.className = "msg " + cls;
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function addSteps(steps) {
+      const div = document.createElement("div");
+      div.className = "steps";
+      const parts = [
+        "deploy check: " + steps.deployCheck,
+        "metric check: " + steps.metricCheck,
+      ];
+      if (steps.similar) parts.push('similar past incident: "' + steps.similar + '"');
+      div.textContent = parts.join(" | ");
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+
+      addMsg("you: " + message, "me");
+      input.value = "";
+      button.disabled = true;
+
+      try {
+        const res = await fetch(`/agents/incident-agent/${sessionId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        if (!res.ok) throw new Error("request failed: " + res.status);
+        const data = await res.json();
+        addMsg("copilot: " + data.reply, "bot");
+        addSteps(data.steps);
+      } catch (err) {
+        addMsg("error: " + err.message, "bot");
+      } finally {
+        button.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>
