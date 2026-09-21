@@ -8,6 +8,8 @@ Built for a Software Engineer application to Cloudflare's infrastructure platfor
 scenario is deliberately close to what that team actually does: turning an operational, on-call
 problem into a small software system instead of a runbook someone reads by hand.
 
+**Live demo:** https://infra-incident-copilot.infra-incident-copilot.workers.dev
+
 ## How it maps to the assignment requirements
 
 | Requirement | What's used | Where |
@@ -62,16 +64,26 @@ needs either `wrangler dev --remote` or an actual `wrangler deploy`, since Worke
 emulated locally — see [Cloudflare's docs](https://developers.cloudflare.com/workers/development-testing/)
 for details on remote bindings.
 
+## Testing
+
+```bash
+npm test
+```
+
+12 tests covering `checkRecentDeploys`, `checkMetrics`, `findSimilarIncident`, and
+`buildTriageContext` (the coordination pipeline end to end, minus the live network AI call).
+
 ## Deploying
 
 ```bash
 npx wrangler deploy
 ```
 
-## What's deliberately left out (for now)
+Deployed and verified live, including the real Workers AI call and the incident-memory recall
+across requests (see the demo link above).
 
-- **Tests** — tracked in [issue #6](https://github.com/Samanyu-dev/infra-incident-copilot/issues/6),
-  deliberately deferred until the end per the assignment's own "prioritize building" framing.
+## What's deliberately left out
+
 - **Real deploy/metrics integration** — `src/mockInfra.ts` is intentionally fake data; wiring it to
   a real API is a follow-up, not part of demonstrating the four required components.
 - **Terraform/IaC for the Cloudflare resources themselves** — this project is deployed via
