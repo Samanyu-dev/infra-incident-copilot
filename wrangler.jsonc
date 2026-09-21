@@ -1,0 +1,19 @@
+{
+  "name": "infra-incident-copilot",
+  "main": "src/server.ts",
+  "compatibility_date": "2025-01-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "IncidentAgent", "class_name": "IncidentAgent" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["IncidentAgent"] }
+  ],
+  "ai": { "binding": "AI" },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
+}
