@@ -1,6 +1,5 @@
 import { Agent, routeAgentRequest } from "agents";
-import { checkRecentDeploys, checkMetrics } from "./mockInfra";
-import { findSimilarIncident } from "./similarity";
+import { buildTriageContext } from "./triageContext";
 import type { AgentState, TriageResult } from "./types";
 
 const SYSTEM_PROMPT = [
@@ -33,23 +32,15 @@ export class IncidentAgent extends Agent<Env, AgentState> {
   // under 30s, so it lives directly on the Agent instead of a separate
   // Workflow instance (see Cloudflare's own Agent-vs-Workflow guidance).
   private async triage(symptom: string): Promise<TriageResult> {
-    const similar = findSimilarIncident(symptom, this.state.incidents);
-    const deployCheck = checkRecentDeploys(symptom);
-    const metricCheck = checkMetrics(symptom);
-
-    const contextLines = [
-      `Symptom: ${symptom}`,
-      `Recent deploy check: ${deployCheck}`,
-      `Metric check: ${metricCheck}`,
-      similar
-        ? `Similar past incident: "${similar.symptom}" was resolved with: ${similar.resolution}`
-        : "No similar past incident found in memory.",
-    ].join("\n");
+    const { deployCheck, metricCheck, similar, promptContext } = buildTriageContext(
+      symptom,
+      this.state.incidents,
+    );
 
     const aiResponse = (await this.env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast", {
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: contextLines },
+        { role: "user", content: promptContext },
       ],
     })) as { response?: string };
 
